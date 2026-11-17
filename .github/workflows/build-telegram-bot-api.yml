@@ -1,0 +1,57 @@
+
+name: Build Telegram Bot API
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git cmake g++ make \
+            zlib1g-dev libssl-dev gperf file
+
+      - name: Clone official source
+        run: |
+          git clone --recursive --depth 1 \
+            https://github.com/tdlib/telegram-bot-api.git
+
+      - name: Configure
+        run: |
+          cd telegram-bot-api
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Compile
+        run: |
+          cmake --build telegram-bot-api/build \
+            --target telegram-bot-api \
+            --parallel 2
+
+      - name: Verify binary
+        run: |
+          test -x telegram-bot-api/build/telegram-bot-api
+          file telegram-bot-api/build/telegram-bot-api
+          telegram-bot-api/build/telegram-bot-api --help
+
+      - name: Package binary
+        run: |
+          mkdir -p output
+          cp telegram-bot-api/build/telegram-bot-api output/
+          tar -czf telegram-bot-api-ubuntu22.tar.gz -C output .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-bot-api-ubuntu22
+          path: telegram-bot-api-ubuntu22.tar.gz
+          retention-days: 30
